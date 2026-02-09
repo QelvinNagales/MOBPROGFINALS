@@ -107,13 +107,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Upload profile picture if selected
       String? avatarUrl = _currentAvatarUrl;
       if (_selectedImageBytes != null) {
-        final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final uploadedUrl = await SupabaseService.uploadProfilePicture(
-          _selectedImageBytes!.toList(),
-          fileName,
-        );
-        if (uploadedUrl != null) {
-          avatarUrl = uploadedUrl;
+        try {
+          final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final uploadedUrl = await SupabaseService.uploadProfilePicture(
+            _selectedImageBytes!,
+            fileName,
+          );
+          if (uploadedUrl != null) {
+            avatarUrl = uploadedUrl;
+          }
+        } catch (e) {
+          debugPrint('Image upload failed: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Image upload failed: $e'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
         }
       }
 

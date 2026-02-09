@@ -1172,19 +1172,22 @@ class SupabaseService {
 
   /// Upload profile picture
   /// Returns the public URL of the uploaded image
-  static Future<String?> uploadProfilePicture(List<int> imageBytes, String fileName) async {
+  static Future<String?> uploadProfilePicture(Uint8List imageBytes, String fileName) async {
     if (userId == null) return null;
     
     try {
-      final String filePath = 'avatars/$userId/$fileName';
+      // Clean filename and add timestamp to avoid conflicts
+      final cleanFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9.]'), '_');
+      final String filePath = '$userId/${DateTime.now().millisecondsSinceEpoch}_$cleanFileName';
       
       // Upload to Supabase Storage
       await client.storage
           .from('profiles')
           .uploadBinary(
             filePath,
-            imageBytes as dynamic,
+            imageBytes,
             fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
               cacheControl: '3600',
               upsert: true,
             ),
@@ -1201,26 +1204,29 @@ class SupabaseService {
       return publicUrl;
     } catch (e) {
       debugPrint('Error uploading profile picture: $e');
-      return null;
+      rethrow;
     }
   }
 
   /// Upload project image
   /// Returns the public URL of the uploaded image
-  static Future<String?> uploadProjectImage(List<int> imageBytes, String fileName, {String? projectId}) async {
+  static Future<String?> uploadProjectImage(Uint8List imageBytes, String fileName, {String? projectId}) async {
     if (userId == null) return null;
     
     try {
+      // Clean filename and add timestamp
+      final cleanFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9.]'), '_');
       final String id = projectId ?? DateTime.now().millisecondsSinceEpoch.toString();
-      final String filePath = 'projects/$userId/$id/$fileName';
+      final String filePath = '$userId/$id/${DateTime.now().millisecondsSinceEpoch}_$cleanFileName';
       
       // Upload to Supabase Storage
       await client.storage
           .from('projects')
           .uploadBinary(
             filePath,
-            imageBytes as dynamic,
+            imageBytes,
             fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
               cacheControl: '3600',
               upsert: true,
             ),
@@ -1234,7 +1240,7 @@ class SupabaseService {
       return publicUrl;
     } catch (e) {
       debugPrint('Error uploading project image: $e');
-      return null;
+      rethrow;
     }
   }
 

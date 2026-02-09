@@ -133,13 +133,18 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
       if (_selectedImages.isNotEmpty) {
         // Upload first image as thumbnail
         final firstImage = _selectedImages.first;
-        final uploadedUrl = await SupabaseService.uploadProjectImage(
-          firstImage.bytes.toList(),
-          firstImage.name,
-          projectId: widget.existingProject?.id,
-        );
-        if (uploadedUrl != null) {
-          thumbnailUrl = uploadedUrl;
+        try {
+          final uploadedUrl = await SupabaseService.uploadProjectImage(
+            firstImage.bytes,
+            firstImage.name,
+            projectId: widget.existingProject?.id,
+          );
+          if (uploadedUrl != null) {
+            thumbnailUrl = uploadedUrl;
+          }
+        } catch (e) {
+          debugPrint('Image upload failed: $e');
+          // Continue without image if upload fails
         }
       }
 
