@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 import '../services/theme_service.dart';
 import '../models/profile.dart';
 import '../services/supabase_service.dart';
@@ -19,6 +22,11 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   bool _isSaving = false;
+  bool _isUploadingImage = false;
+
+  // Profile picture state
+  Uint8List? _selectedImageBytes;
+  String? _currentAvatarUrl;
 
   // Text editing controllers
   late TextEditingController _nameController;
@@ -33,6 +41,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _currentAvatarUrl = widget.profile.avatarUrl;
     _nameController = TextEditingController(text: widget.profile.fullName);
     _pronounsController = TextEditingController(text: widget.profile.pronouns);
     _bioController = TextEditingController(text: widget.profile.bio);
@@ -56,12 +65,58 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _pickProfileImage() async {
+    final ImagePicker picker = ImagePicker();
+    
+    try {
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() => _isUploadingImage = true);
+        
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _selectedImageBytes = bytes;
+          _isUploadingImage = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error selecting image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
 
     try {
+      // Upload profile picture if selected
+      String? avatarUrl = _currentAvatarUrl;
+      if (_selectedImageBytes != null) {
+        final fileName = 'avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final uploadedUrl = await SupabaseService.uploadProfilePicture(
+          _selectedImageBytes!.toList(),
+          fileName,
+        );
+        if (uploadedUrl != null) {
+          avatarUrl = uploadedUrl;
+        }
+      }
+
       final updatedProfile = Profile(
         id: widget.profile.id,
         fullName: _nameController.text.trim(),
@@ -71,7 +126,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         facebookUsername: _facebookController.text.trim(),
         linkedinUsername: _linkedinController.text.trim(),
         socialLink: widget.profile.socialLink,
-        avatarUrl: widget.profile.avatarUrl,
+        avatarUrl: avatarUrl,
         followersCount: widget.profile.followersCount,
         followingCount: widget.profile.followingCount,
         skills: _skillsController.text
@@ -139,53 +194,71 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             children: [
               // Profile Picture Section
               Center(
-                child: Stack(
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.primaryBlue, width: 3),
-                        color: AppColors.lightBlue,
-                      ),
-                      child: widget.profile.avatarUrl != null
-                          ? ClipOval(
-                              child: Image.network(
-                                widget.profile.avatarUrl!,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : Center(
-                              child: Text(
-                                widget.profile.fullName.isNotEmpty
-                                    ? widget.profile.fullName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  fontSize: 40,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.primaryBlue,
-                                ),
-                              ),
-                            ),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primaryBlue,
+                child: GestureDetector(
+                  onTap: _isUploadingImage ? null : _pickProfileImage,
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.primaryBlue, width: 3),
+                          color: AppColors.lightBlue,
                         ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          size: 18,
-                          color: Colors.white,
+                        child: _isUploadingImage
+                            ? const Center(
+                                child: CircularProgressIndicator(),
+                              )
+                            : _selectedImageBytes != null
+                                ? ClipOval(
+                                    child: Image.memory(
+                                      _selectedImageBytes!,
+                                      fit: BoxFit.cover,
+                                      width: 120,
+                                      height: 120,
+                                    ),
+                                  )
+                                : _currentAvatarUrl != null
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          _currentAvatarUrl!,
+                                          fit: BoxFit.cover,
+                                          width: 120,
+                                          height: 120,
+                                          errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
+                                        ),
+                                      )
+                                    : _buildAvatarPlaceholder(),
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primaryBlue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 20,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: Text(
+                  'Tap to change photo',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -306,6 +379,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 32),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarPlaceholder() {
+    return Center(
+      child: Text(
+        widget.profile.fullName.isNotEmpty
+            ? widget.profile.fullName[0].toUpperCase()
+            : '?',
+        style: const TextStyle(
+          fontSize: 48,
+          fontWeight: FontWeight.bold,
+          color: AppColors.primaryBlue,
         ),
       ),
     );

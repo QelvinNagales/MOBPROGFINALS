@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Supabase Configuration and Service
@@ -1163,5 +1164,88 @@ class SupabaseService {
   /// Set user offline
   static Future<void> setOffline() async {
     await updateOnlineStatus(false);
+  }
+
+  // ============================================================================
+  // STORAGE - IMAGE UPLOADS
+  // ============================================================================
+
+  /// Upload profile picture
+  /// Returns the public URL of the uploaded image
+  static Future<String?> uploadProfilePicture(List<int> imageBytes, String fileName) async {
+    if (userId == null) return null;
+    
+    try {
+      final String filePath = 'avatars/$userId/$fileName';
+      
+      // Upload to Supabase Storage
+      await client.storage
+          .from('profiles')
+          .uploadBinary(
+            filePath,
+            imageBytes as dynamic,
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              upsert: true,
+            ),
+          );
+      
+      // Get public URL
+      final String publicUrl = client.storage
+          .from('profiles')
+          .getPublicUrl(filePath);
+      
+      // Update profile with new avatar URL
+      await updateProfile({'avatar_url': publicUrl});
+      
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading profile picture: $e');
+      return null;
+    }
+  }
+
+  /// Upload project image
+  /// Returns the public URL of the uploaded image
+  static Future<String?> uploadProjectImage(List<int> imageBytes, String fileName, {String? projectId}) async {
+    if (userId == null) return null;
+    
+    try {
+      final String id = projectId ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final String filePath = 'projects/$userId/$id/$fileName';
+      
+      // Upload to Supabase Storage
+      await client.storage
+          .from('projects')
+          .uploadBinary(
+            filePath,
+            imageBytes as dynamic,
+            fileOptions: const FileOptions(
+              cacheControl: '3600',
+              upsert: true,
+            ),
+          );
+      
+      // Get public URL
+      final String publicUrl = client.storage
+          .from('projects')
+          .getPublicUrl(filePath);
+      
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Error uploading project image: $e');
+      return null;
+    }
+  }
+
+  /// Delete image from storage
+  static Future<bool> deleteImage(String bucket, String filePath) async {
+    try {
+      await client.storage.from(bucket).remove([filePath]);
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting image: $e');
+      return false;
+    }
   }
 }

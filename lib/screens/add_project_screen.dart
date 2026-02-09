@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
+import 'dart:typed_data';
 import '../services/supabase_service.dart';
 import '../services/theme_service.dart';
 import '../models/repository.dart';
+
+/// Helper class to store image data (works on both web and mobile)
+class PickedImage {
+  final Uint8List bytes;
+  final String name;
+  
+  PickedImage({required this.bytes, required this.name});
+}
 
 /// Add/Edit Project Screen - Bumble-inspired project creation
 /// Allows users to create projects with GitHub integration, README, and images
@@ -28,8 +37,9 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
   String _selectedStatus = 'in_progress';
   bool _isPublic = true;
   bool _isLoading = false;
+  bool _isUploadingImages = false;
   List<String> _selectedTechnologies = [];
-  List<XFile> _selectedImages = [];
+  List<PickedImage> _selectedImages = [];
   List<String> _existingImageUrls = [];
 
   final List<String> _languages = [
@@ -83,9 +93,31 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
     final List<XFile> images = await picker.pickMultiImage();
     
     if (images.isNotEmpty) {
-      setState(() {
-        _selectedImages.addAll(images.take(5 - _selectedImages.length));
-      });
+      setState(() => _isUploadingImages = true);
+      
+      try {
+        for (final image in images.take(5 - _selectedImages.length)) {
+          final bytes = await image.readAsBytes();
+          _selectedImages.add(PickedImage(
+            bytes: bytes,
+            name: image.name,
+          ));
+        }
+        setState(() {});
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error loading images: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isUploadingImages = false);
+        }
+      }
     }
   }
 
@@ -96,11 +128,19 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
 
     try {
       // Upload images if any
-      String? thumbnailUrl;
+      String? thumbnailUrl = _existingImageUrls.isNotEmpty ? _existingImageUrls.first : null;
+      
       if (_selectedImages.isNotEmpty) {
-        // In production, you would upload to Supabase Storage
-        // For now, we'll skip the upload
-        thumbnailUrl = _existingImageUrls.isNotEmpty ? _existingImageUrls.first : null;
+        // Upload first image as thumbnail
+        final firstImage = _selectedImages.first;
+        final uploadedUrl = await SupabaseService.uploadProjectImage(
+          firstImage.bytes.toList(),
+          firstImage.name,
+          projectId: widget.existingProject?.id,
+        );
+        if (uploadedUrl != null) {
+          thumbnailUrl = uploadedUrl;
+        }
       }
 
       final projectData = {
@@ -253,8 +293,8 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(15),
                                   child: isNewImage
-                                      ? Image.file(
-                                          File(_selectedImages[index].path),
+                                      ? Image.memory(
+                                          _selectedImages[index].bytes,
                                           fit: BoxFit.cover,
                                           width: double.infinity,
                                           height: double.infinity,
@@ -281,7 +321,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
+                                      decoration: const BoxDecoration(
                                         color: Colors.black54,
                                         shape: BoxShape.circle,
                                       ),
@@ -302,7 +342,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                   
                   // Add Images Button
                   GestureDetector(
-                    onTap: _pickImages,
+                    onTap: _isUploadingImages ? null : _pickImages,
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 40),
                       decoration: BoxDecoration(
@@ -315,31 +355,45 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                         ),
                       ),
                       child: Center(
-                        child: Column(
-                          children: [
-                            Icon(
-                              Icons.add_photo_alternate_rounded,
-                              size: 48,
-                              color: AppColors.primaryBlue,
-                            ),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Add project screenshots',
-                              style: TextStyle(
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                                fontWeight: FontWeight.w600,
+                        child: _isUploadingImages
+                            ? Column(
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Loading images...',
+                                    style: TextStyle(
+                                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Column(
+                                children: [
+                                  Icon(
+                                    Icons.add_photo_alternate_rounded,
+                                    size: 48,
+                                    color: AppColors.primaryBlue,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Add project screenshots',
+                                    style: TextStyle(
+                                      color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Up to 5 images',
+                                    style: TextStyle(
+                                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Up to 5 images',
-                              style: TextStyle(
-                                color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
                     ),
                   ),
