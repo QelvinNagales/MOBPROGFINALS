@@ -6,6 +6,10 @@ enum NotificationType {
   projectFork,
   mention,
   announcement,
+  like,
+  comment,
+  collaboration,
+  general,
 }
 
 /// Notification model class
@@ -46,6 +50,14 @@ class AppNotification {
         return '@';
       case NotificationType.announcement:
         return '📢';
+      case NotificationType.like:
+        return '❤️';
+      case NotificationType.comment:
+        return '💬';
+      case NotificationType.collaboration:
+        return '🤝';
+      case NotificationType.general:
+        return '🔔';
     }
   }
 

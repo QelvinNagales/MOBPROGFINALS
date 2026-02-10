@@ -331,13 +331,13 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
 
                     const SizedBox(height: 16),
 
-                    // Skills Section (Interactive)
-                    _buildSkillsSection(isDark),
+                    // Contact Section (moved above Skills)
+                    _buildContactSection(isDark),
 
                     const SizedBox(height: 16),
 
-                    // Contact Section
-                    _buildContactSection(isDark),
+                    // Skills Section (Interactive & Adaptive)
+                    _buildSkillsSection(isDark),
 
                     const SizedBox(height: 16),
 
@@ -371,94 +371,112 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       ),
       child: Column(
         children: [
-          // Cover Photo Area with Gradient
+          // Cover Photo Area
           Container(
-            height: 120,
+            height: 150,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppColors.primaryBlue,
-                  AppColors.primaryBlue.withOpacity(0.7),
-                  AppColors.primaryBlue.withOpacity(0.3),
-                ],
-              ),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
             ),
-            child: Stack(
-              children: [
-                // Pattern overlay
-                Positioned.fill(
-                  child: Opacity(
-                    opacity: 0.1,
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
-                      child: Image.network(
-                        'https://www.transparenttextures.com/patterns/cubes.png',
-                        repeat: ImageRepeat.repeat,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Cover image or gradient fallback
+                  if (_profile.coverPhotoUrl != null && _profile.coverPhotoUrl!.isNotEmpty)
+                    Image.network(
+                      _profile.coverPhotoUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildCoverGradient(),
+                    )
+                  else
+                    _buildCoverGradient(),
+                  // Gradient overlay on image
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3),
+                        ],
                       ),
                     ),
                   ),
-                ),
-                // Edit button
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: _navigateToEditProfile,
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.edit_rounded,
-                        size: 18,
-                        color: AppColors.primaryBlue,
+                  // Edit button
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: GestureDetector(
+                      onTap: _navigateToEditProfile,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.edit_rounded,
+                          size: 18,
+                          color: AppColors.primaryBlue,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
           // Profile Info
           Transform.translate(
-            offset: const Offset(0, -50),
+            offset: const Offset(0, -70),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
-                  // Profile Picture with Ring
+                  // Profile Picture - Larger Rounded Vertical Rectangle
                   Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.primaryBlue,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.primaryBlue, AppColors.accentPurple],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryBlue.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
                     ),
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: 140,
+                      height: 170,
                       decoration: BoxDecoration(
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(24),
                         color: isDark ? AppColors.darkCard : Colors.white,
                         border: Border.all(
                           color: isDark ? AppColors.darkSurface : Colors.white,
                           width: 4,
                         ),
                       ),
-                      child: _profile.avatarUrl != null
-                          ? ClipOval(
-                              child: Image.network(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: _profile.avatarUrl != null
+                            ? Image.network(
                                 _profile.avatarUrl!,
                                 fit: BoxFit.cover,
+                                width: 140,
+                                height: 170,
                                 errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(),
-                              ),
-                            )
-                          : _buildAvatarPlaceholder(),
+                              )
+                            : _buildAvatarPlaceholder(),
+                      ),
                     ),
                   ),
 
@@ -575,14 +593,45 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
     );
   }
 
+  Widget _buildCoverGradient() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryBlue,
+            AppColors.primaryBlue.withOpacity(0.7),
+            AppColors.accentPurple.withOpacity(0.5),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAvatarPlaceholder() {
-    return Center(
-      child: Text(
-        _profile.fullName.isNotEmpty ? _profile.fullName[0].toUpperCase() : '?',
-        style: const TextStyle(
-          fontSize: 40,
-          fontWeight: FontWeight.w800,
-          color: AppColors.primaryBlue,
+    return Container(
+      width: 140,
+      height: 170,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryBlue.withOpacity(0.2),
+            AppColors.accentPurple.withOpacity(0.2),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          _profile.fullName.isNotEmpty ? _profile.fullName[0].toUpperCase() : '?',
+          style: const TextStyle(
+            fontSize: 56,
+            fontWeight: FontWeight.w800,
+            color: AppColors.primaryBlue,
+          ),
         ),
       ),
     );
@@ -775,9 +824,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   Widget _buildSkillsSection(bool isDark) {
+    // Calculate if we have skills to determine section height
+    final hasSkills = _profile.skills.isNotEmpty;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
@@ -790,27 +842,28 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(
                   Icons.lightbulb_rounded,
                   color: Color(0xFFF59E0B),
-                  size: 18,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'Skills',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                   ),
@@ -819,24 +872,24 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               GestureDetector(
                 onTap: _showSkillSelection,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: AppColors.primaryBlue.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         Icons.edit_rounded,
-                        size: 14,
+                        size: 12,
                         color: AppColors.primaryBlue,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         'Edit',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primaryBlue,
                         ),
@@ -847,45 +900,38 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Skills or Add Button
-          if (_profile.skills.isEmpty)
+          // Skills - Adaptive based on content
+          if (!hasSkills)
             GestureDetector(
               onTap: _showSkillSelection,
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkCard : AppColors.grey,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: AppColors.primaryBlue.withOpacity(0.3),
-                    width: 2,
-                    style: BorderStyle.solid,
+                    width: 1.5,
                   ),
                 ),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.add_circle_outline_rounded,
-                      size: 32,
+                      size: 20,
                       color: AppColors.primaryBlue,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(width: 8),
                     Text(
                       'Add your skills',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
+                        fontSize: 13,
                         color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Help others understand your expertise',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -894,21 +940,21 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             )
           else
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: _profile.skills.map((skill) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        AppColors.primaryBlue.withOpacity(0.2),
-                        AppColors.primaryBlue.withOpacity(0.1),
+                        AppColors.primaryBlue.withOpacity(0.15),
+                        AppColors.primaryBlue.withOpacity(0.08),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppColors.primaryBlue.withOpacity(0.3),
+                      color: AppColors.primaryBlue.withOpacity(0.25),
                     ),
                   ),
                   child: Text(
@@ -916,7 +962,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     style: TextStyle(
                       color: isDark ? AppColors.darkTextPrimary : AppColors.primaryBlue,
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                   ),
                 );
@@ -1112,17 +1158,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                     color: AppColors.primaryBlue,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                      const SizedBox(width: 4),
-                      const Text(
+                      Icon(Icons.add_rounded, size: 16, color: Colors.white),
+                      SizedBox(width: 4),
+                      Text(
                         'Add',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: Colors.black,
+                          color: Colors.white,
                         ),
                       ),
                     ],
@@ -1202,11 +1248,12 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
   }
 
   Widget _buildProjectCard(Repository project, bool isDark) {
+    final hasThumbnail = project.thumbnailUrl != null && project.thumbnailUrl!.isNotEmpty;
+    
     return GestureDetector(
       onTap: () => _editProject(project),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkCard : AppColors.grey,
           borderRadius: BorderRadius.circular(16),
@@ -1217,124 +1264,240 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                // Project Icon
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _getLanguageColor(project.language).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+            // Thumbnail Image or Placeholder
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+              child: Stack(
+                children: [
+                  if (hasThumbnail)
+                    Image.network(
+                      project.thumbnailUrl!,
+                      width: double.infinity,
+                      height: 120,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildProjectPlaceholder(project, isDark),
+                    )
+                  else
+                    _buildProjectPlaceholder(project, isDark),
+                  // Gradient overlay for better text visibility
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 40,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.4),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.folder_rounded,
-                    color: _getLanguageColor(project.language),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        project.name,
-                        style: TextStyle(
+                  // Status badge on thumbnail
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(project.status),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        _getStatusLabel(project.status),
+                        style: const TextStyle(
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        project.language,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _getLanguageColor(project.language),
-                          fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  // Project name overlay at bottom
+                  Positioned(
+                    bottom: 8,
+                    left: 12,
+                    right: 12,
+                    child: Text(
+                      project.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: Colors.white,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black54,
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Project Info
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Language badge and stats row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getLanguageColor(project.language).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          project.language,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: _getLanguageColor(project.language),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
+                      const Spacer(),
+                      _buildProjectStat(
+                        Icons.star_rounded,
+                        '${project.starsCount}',
+                        AppColors.primaryBlue,
+                        isDark,
+                      ),
+                      if (project.githubUrl != null && project.githubUrl!.isNotEmpty) ...[
+                        const SizedBox(width: 12),
+                        _buildProjectStat(
+                          FontAwesomeIcons.github,
+                          '',
+                          isDark ? Colors.white70 : Colors.black54,
+                          isDark,
+                        ),
+                      ],
                     ],
                   ),
-                ),
-                // Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(project.status).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _getStatusLabel(project.status),
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: _getStatusColor(project.status),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            if (project.description.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Text(
-                project.description,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                  height: 1.4,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            const SizedBox(height: 12),
-            // Stats Row
-            Row(
-              children: [
-                _buildProjectStat(
-                  Icons.star_rounded,
-                  '${project.starsCount}',
-                  AppColors.primaryBlue,
-                  isDark,
-                ),
-                const SizedBox(width: 16),
-                if (project.githubUrl != null && project.githubUrl!.isNotEmpty)
-                  _buildProjectStat(
-                    FontAwesomeIcons.github,
-                    'GitHub',
-                    isDark ? Colors.white : Colors.black,
-                    isDark,
-                  ),
-              ],
-            ),
-            // Technologies
-            if (project.technologies.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: project.technologies.take(4).map((tech) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkBackground : Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      tech,
+                  if (project.description.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      project.description,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 13,
                         color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
+                        height: 1.4,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  );
-                }).toList(),
+                  ],
+                  // Technologies
+                  if (project.technologies.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: project.technologies.take(4).map((tech) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkBackground : Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            tech,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProjectPlaceholder(Repository project, bool isDark) {
+    return Container(
+      width: double.infinity,
+      height: 120,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _getLanguageColor(project.language).withOpacity(0.4),
+            _getLanguageColor(project.language).withOpacity(0.15),
+            AppColors.primaryBlue.withOpacity(0.1),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          // Decorative pattern
+          Positioned(
+            right: -20,
+            top: -20,
+            child: Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -30,
+            bottom: -30,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.08),
+              ),
+            ),
+          ),
+          // Center icon
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                Icons.folder_rounded,
+                size: 36,
+                color: Colors.white.withOpacity(0.9),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1344,15 +1507,17 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 14, color: color),
-        const SizedBox(width: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+        if (value.isNotEmpty) ...[
+          const SizedBox(width: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

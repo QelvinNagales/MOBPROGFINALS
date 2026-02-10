@@ -146,6 +146,14 @@ class NotificationTile extends StatelessWidget {
         return const Color(0xFF6366F1);
       case NotificationType.announcement:
         return const Color(0xFFEF4444);
+      case NotificationType.like:
+        return const Color(0xFFEC4899);
+      case NotificationType.comment:
+        return const Color(0xFF06B6D4);
+      case NotificationType.collaboration:
+        return const Color(0xFF10B981);
+      case NotificationType.general:
+        return const Color(0xFF6B7280);
     }
   }
 }

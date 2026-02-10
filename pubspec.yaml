@@ -48,6 +48,9 @@ dependencies:
   
   # Image picker for project screenshots
   image_picker: ^1.0.7
+  
+  # Image cropper for profile/cover photos
+  image_cropper: ^8.0.2
 
 dev_dependencies:
   flutter_test:

@@ -85,7 +85,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final results = await Future.wait([
         SupabaseService.getMyActivities(),
         SupabaseService.getMyProjects(),
-        SupabaseService.getMyConnections(),
+        SupabaseService.getConnections(),
         SupabaseService.getProfile(),
       ]);
 

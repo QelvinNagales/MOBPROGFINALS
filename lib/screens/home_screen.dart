@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../main.dart' show themeService;
 import '../services/theme_service.dart';
 import '../services/supabase_service.dart';
 import '../models/profile.dart';
-import 'dashboard_screen.dart';
 import 'repositories_screen.dart';
 import 'explore_screen.dart';
 import 'friends_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
+import 'messages_screen.dart';
 
 /// Home Screen
 /// Main container with bottom navigation bar for navigating between sections.
@@ -31,9 +32,13 @@ class _HomeScreenState extends State<HomeScreen> {
   // Notification count for badge - now real-time
   int _notificationCount = 0;
   
+  // Unread message count
+  int _messageCount = 0;
+  
   // Real-time subscriptions
   RealtimeChannel? _profileSubscription;
   RealtimeChannel? _notificationSubscription;
+  RealtimeChannel? _messageSubscription;
   bool _isLoading = true;
 
   @override
@@ -47,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _profileSubscription?.unsubscribe();
     _notificationSubscription?.unsubscribe();
+    _messageSubscription?.unsubscribe();
     super.dispose();
   }
 
@@ -62,6 +68,9 @@ class _HomeScreenState extends State<HomeScreen> {
       
       // Load unread notification count
       await _loadNotificationCount();
+      
+      // Load unread message count
+      await _loadMessageCount();
     } catch (e) {
       debugPrint('Error loading initial data: $e');
     } finally {
@@ -91,6 +100,19 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (e) {
       debugPrint('Error loading notification count: $e');
+    }
+  }
+
+  Future<void> _loadMessageCount() async {
+    try {
+      final count = await SupabaseService.getUnreadMessageCount();
+      if (mounted) {
+        setState(() {
+          _messageCount = count;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading message count: $e');
     }
   }
 
@@ -138,6 +160,20 @@ class _HomeScreenState extends State<HomeScreen> {
           },
         )
         .subscribe();
+
+    // Subscribe to message changes
+    _messageSubscription = SupabaseService.client
+        .channel('home_messages:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) {
+            // Reload message count when messages change
+            _loadMessageCount();
+          },
+        )
+        .subscribe();
   }
 
   void _onProfileUpdate(Profile updatedProfile) {
@@ -162,22 +198,16 @@ class _HomeScreenState extends State<HomeScreen> {
           : IndexedStack(
         index: _currentIndex,
         children: [
-          // Dashboard
-          DashboardScreen(
-            profile: _profile,
-            onProfileUpdate: _onProfileUpdate,
-            onNavigateToFriends: () => setState(() => _currentIndex = 3),
-            onNavigateToRepositories: () => setState(() => _currentIndex = 1),
-            scaffoldKey: _scaffoldKey,
-          ),
-          // Repositories
-          const RepositoriesScreen(),
-          // Explore
-          const ExploreScreen(),
+          // Feed (Explore) - Now the home screen
+          ExploreScreen(scaffoldKey: _scaffoldKey),
+          // Projects (Repositories)
+          RepositoriesScreen(scaffoldKey: _scaffoldKey),
+          // Messages - Replaces old Dashboard
+          MessagesScreen(scaffoldKey: _scaffoldKey),
           // Network (Friends)
-          const FriendsScreen(),
+          FriendsScreen(scaffoldKey: _scaffoldKey),
           // Notifications
-          const NotificationsScreen(),
+          NotificationsScreen(scaffoldKey: _scaffoldKey),
         ],
       ),
       bottomNavigationBar: Container(
@@ -203,9 +233,9 @@ class _HomeScreenState extends State<HomeScreen> {
           indicatorColor: AppColors.primaryBlue.withValues(alpha: 0.3),
           destinations: [
             NavigationDestination(
-              icon: Icon(Icons.home_outlined, color: isDark ? Colors.white70 : null),
-              selectedIcon: const Icon(Icons.home_rounded, color: AppColors.primaryBlue),
-              label: 'Home',
+              icon: Icon(Icons.dynamic_feed_outlined, color: isDark ? Colors.white70 : null),
+              selectedIcon: const Icon(Icons.dynamic_feed_rounded, color: AppColors.primaryBlue),
+              label: 'Feed',
             ),
             NavigationDestination(
               icon: Icon(Icons.folder_outlined, color: isDark ? Colors.white70 : null),
@@ -213,9 +243,23 @@ class _HomeScreenState extends State<HomeScreen> {
               label: 'Projects',
             ),
             NavigationDestination(
-              icon: Icon(Icons.explore_outlined, color: isDark ? Colors.white70 : null),
-              selectedIcon: const Icon(Icons.explore_rounded, color: AppColors.primaryBlue),
-              label: 'Explore',
+              icon: Badge(
+                label: _messageCount > 0
+                    ? Text('$_messageCount', style: const TextStyle(fontSize: 10, color: Colors.black))
+                    : null,
+                isLabelVisible: _messageCount > 0,
+                backgroundColor: AppColors.primaryBlue,
+                child: Icon(Icons.chat_bubble_outline_rounded, color: isDark ? Colors.white70 : null),
+              ),
+              selectedIcon: Badge(
+                label: _messageCount > 0
+                    ? Text('$_messageCount', style: const TextStyle(fontSize: 10, color: Colors.black))
+                    : null,
+                isLabelVisible: _messageCount > 0,
+                backgroundColor: AppColors.primaryBlue,
+                child: const Icon(Icons.chat_bubble_rounded, color: AppColors.primaryBlue),
+              ),
+              label: 'Messages',
             ),
             NavigationDestination(
               icon: Icon(Icons.people_outline_rounded, color: isDark ? Colors.white70 : null),
@@ -349,8 +393,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => ProfileScreen(
+                        _createSmoothPageRoute(
+                          ProfileScreen(
                             profile: _profile,
                             onProfileUpdate: _onProfileUpdate,
                           ),
@@ -369,9 +413,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   _buildDrawerItem(
-                    icon: Icons.explore_rounded,
-                    title: 'Explore',
+                    icon: Icons.chat_bubble_rounded,
+                    title: 'Messages',
                     selected: _currentIndex == 2,
+                    badge: _messageCount > 0 ? _messageCount : null,
                     isDark: isDark,
                     onTap: () {
                       setState(() => _currentIndex = 2);
@@ -405,38 +450,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Divider(height: 1, color: isDark ? Colors.white12 : Colors.grey.shade200),
                   ),
 
-                  _buildDrawerItem(
-                    icon: Icons.bookmark_rounded,
-                    title: 'Saved Items',
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Coming soon!'),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          backgroundColor: AppColors.primaryBlue,
-                        ),
-                      );
-                    },
-                  ),
-                  _buildDrawerItem(
-                    icon: Icons.analytics_rounded,
-                    title: 'Analytics',
-                    isDark: isDark,
-                    onTap: () {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Coming soon!'),
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          backgroundColor: AppColors.primaryBlue,
-                        ),
-                      );
-                    },
-                  ),
+                  // Dark/Light Mode Toggle
+                  _buildThemeToggle(isDark),
 
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -451,9 +466,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Navigator.pop(context);
                       Navigator.push(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
+                        _createSmoothPageRoute(const SettingsScreen()),
                       );
                     },
                   ),
@@ -540,6 +553,124 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         onTap: onTap,
       ),
+    );
+  }
+
+  Widget _buildThemeToggle(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          color: isDark 
+              ? AppColors.primaryBlue.withValues(alpha: 0.15)
+              : AppColors.primaryBlue.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          leading: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, animation) {
+              return RotationTransition(
+                turns: animation,
+                child: ScaleTransition(scale: animation, child: child),
+              );
+            },
+            child: Icon(
+              isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+              key: ValueKey<bool>(isDark),
+              color: AppColors.primaryBlue,
+              size: 22,
+            ),
+          ),
+          title: Text(
+            isDark ? 'Dark Mode' : 'Light Mode',
+            style: TextStyle(
+              color: isDark ? Colors.white : AppColors.darkText,
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+            ),
+          ),
+          trailing: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            width: 50,
+            height: 28,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              color: isDark 
+                  ? AppColors.primaryBlue 
+                  : AppColors.darkGrey.withValues(alpha: 0.3),
+            ),
+            child: Stack(
+              children: [
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  left: isDark ? 24 : 2,
+                  top: 2,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(
+                        isDark ? Icons.nights_stay_rounded : Icons.wb_sunny_rounded,
+                        size: 14,
+                        color: isDark ? AppColors.primaryBlue : AppColors.warning,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          onTap: () {
+            themeService.toggleDarkMode();
+          },
+        ),
+      ),
+    );
+  }
+
+  Route _createSmoothPageRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionDuration: const Duration(milliseconds: 350),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0);
+        const end = Offset.zero;
+        const curve = Curves.easeOutCubic;
+
+        var tween = Tween(begin: begin, end: end).chain(
+          CurveTween(curve: curve),
+        );
+
+        var fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(parent: animation, curve: curve),
+        );
+
+        return SlideTransition(
+          position: animation.drive(tween),
+          child: FadeTransition(
+            opacity: fadeAnimation,
+            child: child,
+          ),
+        );
+      },
     );
   }
 }

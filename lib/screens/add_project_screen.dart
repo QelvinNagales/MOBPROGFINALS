@@ -171,9 +171,15 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
         await SupabaseService.createProject(
           name: projectData['name'] as String,
           description: projectData['description'] as String,
+          longDescription: projectData['long_description'] as String?,
           language: projectData['language'] as String,
           isPublic: projectData['is_public'] as bool,
           topics: _selectedTechnologies,
+          technologies: _selectedTechnologies,
+          status: _selectedStatus,
+          thumbnailUrl: thumbnailUrl,
+          githubUrl: projectData['github_url'] as String?,
+          demoUrl: projectData['demo_url'] as String?,
         );
       }
 
