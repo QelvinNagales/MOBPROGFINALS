@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/notification_model.dart';
 import '../widgets/notification_tile.dart';
 import '../services/theme_service.dart';
 import '../services/supabase_service.dart';
+import '../services/sound_service.dart';
 
 /// Notifications Screen
 /// Displays all notifications fetched from Supabase.
@@ -18,11 +20,47 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<AppNotification> _notifications = [];
   bool _isLoading = true;
+  RealtimeChannel? _notificationsSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
+    _setupRealtimeSubscription();
+  }
+
+  @override
+  void dispose() {
+    _notificationsSubscription?.unsubscribe();
+    super.dispose();
+  }
+
+  void _setupRealtimeSubscription() {
+    final userId = SupabaseService.userId;
+    if (userId == null) return;
+
+    _notificationsSubscription = SupabaseService.client
+        .channel('notifications_screen:$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            // Only play sound for non-message notifications
+            // Message notifications are handled separately via toast with chat sound
+            final notifType = payload.newRecord['type'] as String?;
+            if (notifType != 'new_message' && notifType != 'message') {
+              soundService.playDefaultNotification();
+            }
+            _loadNotifications();
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _loadNotifications() async {

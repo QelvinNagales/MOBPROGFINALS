@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../main.dart' show themeService;
 import '../services/theme_service.dart';
 import '../services/supabase_service.dart';
+import '../services/sound_service.dart';
 import 'auth/login_screen.dart';
 
 /// Settings Screen - Bumble-Inspired Design
@@ -196,6 +197,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _buildThemeSwitchTile(isDark),
               _buildDivider(isDark),
+              _buildSoundSwitchTile(isDark),
+              _buildDivider(isDark),
+              _buildChatSoundSwitchTile(isDark),
+              _buildDivider(isDark),
               _buildListTile(
                 icon: Icons.language_rounded,
                 title: 'Language',
@@ -324,6 +329,120 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: isDark,
             onChanged: (value) {
               themeService.setThemeMode(value ? ThemeMode.dark : ThemeMode.light);
+            },
+            activeColor: AppColors.primaryBlue,
+            activeTrackColor: AppColors.primaryBlue.withOpacity(0.3),
+            inactiveThumbColor: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            inactiveTrackColor: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSoundSwitchTile(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1a1a2e) : AppColors.primaryBlue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              soundService.isSoundEnabled ? Icons.volume_up_rounded : Icons.volume_off_rounded,
+              size: 18,
+              color: isDark ? AppColors.primaryBlue : Colors.white,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notification Sounds',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  soundService.isSoundEnabled ? 'Sound effects enabled' : 'Sound effects disabled',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: soundService.isSoundEnabled,
+            onChanged: (value) async {
+              await soundService.setSoundEnabled(value);
+              setState(() {});
+            },
+            activeColor: AppColors.primaryBlue,
+            activeTrackColor: AppColors.primaryBlue.withOpacity(0.3),
+            inactiveThumbColor: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+            inactiveTrackColor: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatSoundSwitchTile(bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1a1a2e) : AppColors.primaryBlue,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              soundService.isChatSoundEnabled ? Icons.chat_bubble_rounded : Icons.chat_bubble_outline_rounded,
+              size: 18,
+              color: isDark ? AppColors.primaryBlue : Colors.white,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Chat Sounds',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  soundService.isChatSoundEnabled ? 'Chat notification sounds on' : 'Chat notification sounds off',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: soundService.isChatSoundEnabled,
+            onChanged: (value) async {
+              await soundService.setChatSoundEnabled(value);
+              setState(() {});
             },
             activeColor: AppColors.primaryBlue,
             activeTrackColor: AppColors.primaryBlue.withOpacity(0.3),

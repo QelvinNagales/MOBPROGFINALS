@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'services/supabase_service.dart';
 import 'services/theme_service.dart';
 import 'services/connectivity_service.dart';
+import 'services/sound_service.dart';
 import 'screens/splash_screen.dart';
 
 /// Horn-In - APC Student Networking Platform
@@ -37,6 +38,9 @@ void main() async {
   
   // Initialize Supabase
   await SupabaseService.initialize();
+  
+  // Initialize Sound Service
+  await soundService.initialize();
   
   runApp(const MyApp());
 }

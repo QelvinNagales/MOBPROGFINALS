@@ -50,6 +50,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           schema: 'public',
           table: 'messages',
           callback: (payload) {
+            // Sound is handled by home_screen toast notification
             _loadConversations();
           },
         )
@@ -76,6 +77,7 @@ class _MessagesScreenState extends State<MessagesScreen> {
           schema: 'public',
           table: 'group_messages',
           callback: (payload) {
+            // Sound is handled by home_screen toast notification
             _loadGroupChats();
           },
         )

@@ -138,6 +138,7 @@ class _ChatScreenState extends State<ChatScreen> {
             
             // Only reload if the message is for this conversation
             if (targetId == _conversationId && mounted) {
+              // Sound notification is handled by home_screen globally
               _loadMessages();
             }
           },

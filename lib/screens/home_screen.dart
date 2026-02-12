@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../main.dart' show themeService;
 import '../services/theme_service.dart';
 import '../services/supabase_service.dart';
+import '../services/sound_service.dart';
+import '../services/toast_notification_service.dart';
 import '../models/profile.dart';
 import 'repositories_screen.dart';
 import 'explore_screen.dart';
@@ -11,6 +13,7 @@ import 'notifications_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'messages_screen.dart';
+import 'chat_screen.dart';
 
 /// Home Screen
 /// Main container with bottom navigation bar for navigating between sections.
@@ -168,7 +171,50 @@ class _HomeScreenState extends State<HomeScreen> {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'messages',
-          callback: (payload) {
+          callback: (payload) async {
+            // Show toast and play sound for new messages from others
+            if (payload.eventType == PostgresChangeEvent.insert) {
+              final senderId = payload.newRecord['sender_id'];
+              if (senderId != null && senderId != userId && mounted) {
+                // Play chat notification sound
+                soundService.playChatNotification();
+                
+                // Get sender info for toast
+                try {
+                  final senderProfile = await SupabaseService.getProfileById(senderId);
+                  if (senderProfile != null && mounted) {
+                    final senderName = senderProfile['full_name'] ?? 'Someone';
+                    final senderAvatar = senderProfile['avatar_url'];
+                    final messageContent = payload.newRecord['content'] ?? '';
+                    final conversationId = payload.newRecord['conversation_id'];
+                    
+                    // Show toast notification
+                    toastService.showChatToast(
+                      context: context,
+                      senderName: senderName,
+                      message: messageContent,
+                      senderAvatar: senderAvatar,
+                      onTap: () {
+                        // Navigate to chat screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ChatScreen(
+                              recipientId: senderId,
+                              recipientName: senderName,
+                              recipientAvatar: senderAvatar,
+                              conversationId: conversationId,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                } catch (e) {
+                  debugPrint('Error getting sender info: $e');
+                }
+              }
+            }
             // Reload message count when messages change
             _loadMessageCount();
           },

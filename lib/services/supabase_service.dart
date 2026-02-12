@@ -347,6 +347,31 @@ class SupabaseService {
     
     // Increment star count
     await client.rpc('increment_stars', params: {'project_id': projectId});
+    
+    // Notify the project owner
+    try {
+      final project = await client
+          .from('projects')
+          .select('user_id, name')
+          .eq('id', projectId)
+          .maybeSingle();
+      
+      if (project != null && project['user_id'] != userId) {
+        final myProfile = await getProfile();
+        final myName = myProfile?['full_name'] ?? 'Someone';
+        final projectName = project['name'] ?? 'your project';
+        
+        await createNotification(
+          targetUserId: project['user_id'],
+          type: 'project_star',
+          title: 'New Star!',
+          message: '$myName starred your project "$projectName"',
+          fromUserId: userId,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending star notification: $e');
+    }
   }
 
   /// Unstar a project
@@ -455,6 +480,32 @@ class SupabaseService {
           )
         ''')
         .single();
+    
+    // Notify the project owner
+    try {
+      final project = await client
+          .from('projects')
+          .select('user_id, name')
+          .eq('id', projectId)
+          .maybeSingle();
+      
+      if (project != null && project['user_id'] != userId) {
+        final myProfile = await getProfile();
+        final myName = myProfile?['full_name'] ?? 'Someone';
+        final projectName = project['name'] ?? 'your project';
+        final commentPreview = content.length > 50 ? '${content.substring(0, 50)}...' : content;
+        
+        await createNotification(
+          targetUserId: project['user_id'],
+          type: 'project_comment',
+          title: 'New Comment',
+          message: '$myName commented on "$projectName": "$commentPreview"',
+          fromUserId: userId,
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sending comment notification: $e');
+    }
     
     return response;
   }
@@ -1517,6 +1568,31 @@ class SupabaseService {
 
       // Increment reposts count on original
       await client.rpc('increment_post_reposts', params: {'post_id': originalPostId});
+      
+      // Notify the original post owner
+      try {
+        final originalPost = await client
+            .from('posts')
+            .select('user_id, content')
+            .eq('id', originalPostId)
+            .maybeSingle();
+        
+        if (originalPost != null && originalPost['user_id'] != userId) {
+          final myProfile = await getProfile();
+          final myName = myProfile?['full_name'] ?? 'Someone';
+          
+          await createNotification(
+            targetUserId: originalPost['user_id'],
+            type: 'post_repost',
+            title: 'New Repost',
+            message: '$myName reposted your post',
+            fromUserId: userId,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error sending repost notification: $e');
+      }
+      
       return response;
     } catch (e) {
       debugPrint('Error reposting: $e');
@@ -1551,6 +1627,32 @@ class SupabaseService {
 
       // Increment reposts count on original
       await client.rpc('increment_post_reposts', params: {'post_id': originalPostId});
+      
+      // Notify the original post owner
+      try {
+        final originalPost = await client
+            .from('posts')
+            .select('user_id')
+            .eq('id', originalPostId)
+            .maybeSingle();
+        
+        if (originalPost != null && originalPost['user_id'] != userId) {
+          final myProfile = await getProfile();
+          final myName = myProfile?['full_name'] ?? 'Someone';
+          final quotePreview = quoteText.length > 40 ? '${quoteText.substring(0, 40)}...' : quoteText;
+          
+          await createNotification(
+            targetUserId: originalPost['user_id'],
+            type: 'post_quote_repost',
+            title: 'New Quote Repost',
+            message: '$myName quoted your post: "$quotePreview"',
+            fromUserId: userId,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error sending quote repost notification: $e');
+      }
+      
       return response;
     } catch (e) {
       debugPrint('Error quote reposting: $e');
@@ -1631,6 +1733,34 @@ class SupabaseService {
       
       // Increment likes count
       await client.rpc('increment_post_likes', params: {'post_id': postId});
+      
+      // Notify the post owner
+      try {
+        final post = await client
+            .from('posts')
+            .select('user_id, content')
+            .eq('id', postId)
+            .maybeSingle();
+        
+        if (post != null && post['user_id'] != userId) {
+          final myProfile = await getProfile();
+          final myName = myProfile?['full_name'] ?? 'Someone';
+          final postPreview = (post['content'] as String? ?? '').length > 30 
+              ? '${(post['content'] as String).substring(0, 30)}...' 
+              : post['content'] ?? 'your post';
+          
+          await createNotification(
+            targetUserId: post['user_id'],
+            type: 'post_like',
+            title: 'New Like',
+            message: '$myName liked your post: "$postPreview"',
+            fromUserId: userId,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error sending like notification: $e');
+      }
+      
       return true;
     } catch (e) {
       debugPrint('Error liking post: $e');
@@ -1733,6 +1863,32 @@ class SupabaseService {
 
       // Increment comments count
       await client.rpc('increment_post_comments', params: {'post_id': postId});
+      
+      // Notify the post owner
+      try {
+        final post = await client
+            .from('posts')
+            .select('user_id')
+            .eq('id', postId)
+            .maybeSingle();
+        
+        if (post != null && post['user_id'] != userId) {
+          final myProfile = await getProfile();
+          final myName = myProfile?['full_name'] ?? 'Someone';
+          final commentPreview = content.length > 40 ? '${content.substring(0, 40)}...' : content;
+          
+          await createNotification(
+            targetUserId: post['user_id'],
+            type: 'post_comment',
+            title: 'New Comment',
+            message: '$myName commented on your post: "$commentPreview"',
+            fromUserId: userId,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error sending comment notification: $e');
+      }
+      
       return response;
     } catch (e) {
       debugPrint('Error adding comment: $e');
@@ -1757,6 +1913,33 @@ class SupabaseService {
 
       // Increment reposts count on original
       await client.rpc('increment_post_reposts', params: {'post_id': originalPostId});
+      
+      // Notify the original post owner
+      try {
+        final originalPost = await client
+            .from('posts')
+            .select('user_id')
+            .eq('id', originalPostId)
+            .maybeSingle();
+        
+        if (originalPost != null && originalPost['user_id'] != userId) {
+          final myProfile = await getProfile();
+          final myName = myProfile?['full_name'] ?? 'Someone';
+          
+          await createNotification(
+            targetUserId: originalPost['user_id'],
+            type: 'post_repost',
+            title: 'New Repost',
+            message: comment != null && comment.isNotEmpty 
+                ? '$myName reposted your post with a comment'
+                : '$myName reposted your post',
+            fromUserId: userId,
+          );
+        }
+      } catch (e) {
+        debugPrint('Error sending repost notification: $e');
+      }
+      
       return response;
     } catch (e) {
       debugPrint('Error reposting: $e');
