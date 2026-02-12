@@ -355,6 +355,8 @@ class _FriendsScreenState extends State<FriendsScreen>
             unselectedLabelColor: isDark ? Colors.white54 : AppColors.darkText.withValues(alpha: 0.5),
             indicatorColor: AppColors.primaryBlue,
             indicatorWeight: 3,
+            isScrollable: true,
+            tabAlignment: TabAlignment.center,
             tabs: [
               Tab(
                 child: Row(

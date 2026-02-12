@@ -178,15 +178,42 @@ class SupabaseService {
     return getProfileById(userId);
   }
 
-  /// Update profile
+  /// Update profile - only sends editable fields to avoid DB errors
   static Future<void> updateProfile(Map<String, dynamic> data) async {
     if (userId == null) return;
     
-    data['updated_at'] = DateTime.now().toIso8601String();
+    // Only include fields that are actually editable in the database
+    final editableFields = <String, dynamic>{};
+    final allowedFields = [
+      'full_name',
+      'email',
+      'bio',
+      'pronouns',
+      'avatar_url',
+      'cover_photo_url',
+      'social_link',
+      'facebook_username',
+      'linkedin_username',
+      'github_username',
+      'website_url',
+      'location',
+      'year_level',
+      'course',
+      'skills',
+      'projects',
+    ];
+    
+    for (final field in allowedFields) {
+      if (data.containsKey(field)) {
+        editableFields[field] = data[field];
+      }
+    }
+    
+    editableFields['updated_at'] = DateTime.now().toIso8601String();
     
     await client
         .from('profiles')
-        .update(data)
+        .update(editableFields)
         .eq('id', userId!);
   }
 

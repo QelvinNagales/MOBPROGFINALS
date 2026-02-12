@@ -308,20 +308,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             .toList(),
       );
 
-      // Try to save to Supabase if user is authenticated
+      // Save to Supabase
+      bool dbSaveSuccess = true;
       try {
         await SupabaseService.updateProfile(updatedProfile.toJson());
       } catch (e) {
-        // Continue with local update if Supabase fails
+        dbSaveSuccess = false;
         debugPrint('Supabase update failed: $e');
       }
 
       if (mounted) {
         Navigator.pop(context, updatedProfile);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile updated successfully!'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: Text(dbSaveSuccess 
+                ? 'Profile updated successfully!' 
+                : 'Profile updated locally. Sync may have failed.'),
+            backgroundColor: dbSaveSuccess ? Colors.green : Colors.orange,
           ),
         );
       }
