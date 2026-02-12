@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/theme_service.dart';
+import '../services/connectivity_service.dart';
 import '../models/profile.dart';
 import '../models/activity.dart';
 import '../services/supabase_service.dart';
@@ -135,6 +137,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 16),
+                  
+                  // Offline indicator
+                  Consumer<ConnectivityService>(
+                    builder: (context, connectivity, _) {
+                      if (connectivity.isConnected) return const SizedBox.shrink();
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.wifi_off_rounded, size: 18, color: Colors.red.shade700),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'No internet connection. Some features may be unavailable.',
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                   
                   // Header with hamburger menu and greeting
                   _buildHeader(isDark),

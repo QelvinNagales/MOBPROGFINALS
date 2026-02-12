@@ -67,13 +67,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (mounted) {
         final posts = postsData.map((p) => Post.fromJson(p, currentUserId: currentUserId)).toList();
         
-        // Check which posts are liked
-        for (final post in posts) {
-          if (post.id != null) {
-            final liked = await SupabaseService.hasLikedPost(post.id!);
-            if (liked) _likedPosts.add(post.id!);
-          }
-        }
+        // Batch fetch liked posts (fixes N+1 query)
+        final postIds = posts.where((p) => p.id != null).map((p) => p.id!).toList();
+        final likedIds = await SupabaseService.getLikedPostIds(postIds);
+        _likedPosts.clear();
+        _likedPosts.addAll(likedIds);
         
         setState(() {
           _posts.clear();
@@ -943,6 +941,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Widget _buildCreatePostCard(bool isDark) {
+    final userInitial = (_currentUserProfile?.fullName.isNotEmpty ?? false)
+        ? _currentUserProfile!.fullName[0].toUpperCase()
+        : '?';
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
@@ -964,10 +966,38 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 color: AppColors.primaryBlue.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.person_rounded,
-                color: AppColors.primaryBlue,
-              ),
+              child: _currentUserProfile?.avatarUrl != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        _currentUserProfile!.avatarUrl!,
+                        width: 44,
+                        height: 44,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Text(
+                              userInitial,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryBlue,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Center(
+                      child: Text(
+                        userInitial,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(

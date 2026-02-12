@@ -1449,6 +1449,26 @@ class SupabaseService {
     }
   }
 
+  /// Batch get all liked post IDs for current user (fixes N+1 query)
+  static Future<Set<String>> getLikedPostIds(List<String> postIds) async {
+    if (userId == null || postIds.isEmpty) return {};
+
+    try {
+      final response = await client
+          .from('post_likes')
+          .select('post_id')
+          .eq('user_id', userId!)
+          .inFilter('post_id', postIds);
+      
+      return (response as List)
+          .map((row) => row['post_id'] as String)
+          .toSet();
+    } catch (e) {
+      debugPrint('Error getting liked post IDs: $e');
+      return {};
+    }
+  }
+
   /// Check if user liked a post
   static Future<bool> hasLikedPost(String postId) async {
     if (userId == null) return false;

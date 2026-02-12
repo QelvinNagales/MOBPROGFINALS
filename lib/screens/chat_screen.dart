@@ -1248,7 +1248,7 @@ class _ChatScreenState extends State<ChatScreen> {
               style: TextStyle(
                 fontSize: 15,
                 color: isMe
-                    ? Colors.black
+                    ? Colors.white
                     : (isDark ? Colors.white : AppColors.darkText),
               ),
             ),
@@ -1261,7 +1261,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   style: TextStyle(
                     fontSize: 10,
                     color: isMe
-                        ? Colors.black54
+                        ? Colors.white70
                         : (isDark ? Colors.white38 : AppColors.darkText.withValues(alpha: 0.4)),
                   ),
                 ),
@@ -1270,7 +1270,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   Icon(
                     message.isRead ? Icons.done_all_rounded : Icons.done_rounded,
                     size: 14,
-                    color: message.isRead ? Colors.blue[900] : Colors.black54,
+                    color: message.isRead ? Colors.white : Colors.white70,
                   ),
                 ],
               ],
@@ -1347,12 +1347,12 @@ class _ChatScreenState extends State<ChatScreen> {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.black,
+                        color: Colors.white,
                       ),
                     )
                   : const Icon(
                       Icons.send_rounded,
-                      color: Colors.black,
+                      color: Colors.white,
                     ),
             ),
           ),

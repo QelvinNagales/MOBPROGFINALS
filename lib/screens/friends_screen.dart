@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/profile.dart';
 import '../models/connection_request.dart';
@@ -20,6 +21,7 @@ class _FriendsScreenState extends State<FriendsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
   // Data
   List<Profile> _searchResults = [];
@@ -44,6 +46,7 @@ class _FriendsScreenState extends State<FriendsScreen>
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -103,6 +106,26 @@ class _FriendsScreenState extends State<FriendsScreen>
     } catch (e) {
       if (mounted) setState(() => _isLoadingConnections = false);
     }
+  }
+
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+        _searchQuery = '';
+      });
+      return;
+    }
+    
+    setState(() => _searchQuery = query);
+    
+    // Debounce search by 400ms
+    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+      _searchPeople(query);
+    });
   }
 
   Future<void> _searchPeople(String query) async {
@@ -392,10 +415,7 @@ class _FriendsScreenState extends State<FriendsScreen>
             ),
             child: TextField(
               controller: _searchController,
-              onChanged: (value) {
-                setState(() => _searchQuery = value);
-                _searchPeople(value);
-              },
+              onChanged: _onSearchChanged,
               style: TextStyle(color: isDark ? Colors.white : AppColors.darkText),
               decoration: InputDecoration(
                 hintText: 'Search for students by name, email, or skills...',

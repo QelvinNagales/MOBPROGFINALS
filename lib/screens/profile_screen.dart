@@ -6,9 +6,12 @@ import '../models/profile.dart';
 import '../models/repository.dart';
 import '../services/supabase_service.dart';
 import '../widgets/skill_selection_sheet.dart';
+import '../widgets/qr_code_modal.dart';
+import '../widgets/share_profile_modal.dart';
 import 'edit_profile_screen.dart';
 import 'settings_screen.dart';
 import 'add_project_screen.dart';
+import 'qr_scanner_screen.dart';
 
 /// Profile Screen - Bumble-Inspired Design
 /// Displays the student's full profile for networking and group matching.
@@ -560,18 +563,24 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       _buildQuickAction(
                         icon: Icons.share_rounded,
                         label: 'Share',
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Profile link copied!')),
-                          );
-                        },
+                        onTap: () => ShareProfileModal.show(context, _profile!),
                         isDark: isDark,
                       ),
                       const SizedBox(width: 12),
                       _buildQuickAction(
                         icon: Icons.qr_code_rounded,
                         label: 'QR Code',
-                        onTap: () {},
+                        onTap: () => QrCodeModal.show(context, _profile!),
+                        isDark: isDark,
+                      ),
+                      const SizedBox(width: 12),
+                      _buildQuickAction(
+                        icon: Icons.qr_code_scanner_rounded,
+                        label: 'Scan',
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                        ),
                         isDark: isDark,
                       ),
                       const SizedBox(width: 12),

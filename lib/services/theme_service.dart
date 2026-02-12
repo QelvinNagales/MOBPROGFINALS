@@ -59,20 +59,21 @@ class ThemeService extends ChangeNotifier {
   }
 }
 
-/// App Colors - Original Blue/Purple Theme
+/// App Colors - Horn-In Theme (Navy Blue & Gold)
 class AppColors {
-  // Primary Colors - Blue/Purple Theme
-  static const Color primaryYellow = Color(0xFFFFD700);
-  static const Color primaryBlue = Color(0xFF3D3D8F);
-  static const Color primaryGold = Color(0xFFD4C84D);
-  static const Color bumbleYellow = Color(0xFF3D3D8F); // Now uses primaryBlue for consistency
+  // Primary Colors - Navy Blue & Gold Theme (APC/Horn-In Branding)
+  static const Color primaryNavy = Color(0xFF1A237E);     // Deep navy blue
+  static const Color primaryGold = Color(0xFFD4A51D);     // APC gold
+  static const Color primaryBlue = Color(0xFF1A237E);     // Alias for navy
+  static const Color accentBlue = Color(0xFF3D5AFE);      // Blue glow accent
+  static const Color bumbleYellow = Color(0xFFD4A51D);    // Uses gold for consistency
   static const Color accentPink = Color(0xFFFF6B6B);
   static const Color accentPurple = Color(0xFF7C4DFF);
 
   // Light Theme Colors
-  static const Color lightBlue = Color(0xFFF0F0FA);
+  static const Color lightBlue = Color(0xFFF0F4FF);
   static const Color lightBackground = Color(0xFFF8F9FA);
-  static const Color accentBlue = Color(0xFFE8E8F5);
+  static const Color lightAccentBlue = Color(0xFFE8ECF5);
   static const Color white = Colors.white;
   static const Color grey = Color(0xFFF8F9FA);
   static const Color darkGrey = Color(0xFF6B7280);
@@ -84,11 +85,11 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
   static const Color warning = Color(0xFFF59E0B);
 
-  // Dark Theme Colors
-  static const Color darkBackground = Color(0xFF121212);
-  static const Color darkSurface = Color(0xFF1E1E1E);
-  static const Color darkCard = Color(0xFF2D2D2D);
-  static const Color darkCardBorder = Color(0xFF404040);
+  // Dark Theme Colors (matching login/splash screens)
+  static const Color darkBackground = Color(0xFF0D1421);
+  static const Color darkSurface = Color(0xFF1E1E2E);
+  static const Color darkCard = Color(0xFF2D2D3A);
+  static const Color darkCardBorder = Color(0xFF404050);
   static const Color darkTextPrimary = Color(0xFFF3F4F6);
   static const Color darkTextSecondary = Color(0xFF9CA3AF);
 }
