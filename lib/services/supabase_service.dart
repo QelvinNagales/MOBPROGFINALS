@@ -67,6 +67,53 @@ class SupabaseService {
     await client.auth.signOut();
   }
 
+  /// Delete account - fully deletes user from database (including auth.users)
+  /// After deletion, the user cannot log in again
+  /// Requires password re-confirmation for security
+  static Future<({bool success, String? error})> deleteAccountWithPassword(String password) async {
+    if (userId == null) return (success: false, error: 'Not logged in');
+    
+    final email = client.auth.currentUser?.email;
+    if (email == null) return (success: false, error: 'No email found');
+
+    try {
+      // Step 1: Verify password by attempting to sign in again
+      await client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      debugPrint('Password verified successfully');
+      
+      // Step 2: Call the RPC function that deletes profile AND auth.users entry
+      final result = await client
+          .rpc('delete_user_account')
+          .timeout(const Duration(seconds: 10));
+      
+      debugPrint('delete_user_account RPC result: $result');
+      
+      // Step 3: Sign out locally
+      try {
+        await signOut();
+      } catch (e) {
+        debugPrint('Sign out after delete: $e');
+      }
+      
+      return (success: result == true, error: result == true ? null : 'Failed to delete from database');
+    } on AuthException catch (e) {
+      debugPrint('Auth error during delete: ${e.message}');
+      return (success: false, error: 'Incorrect password');
+    } catch (e) {
+      debugPrint('Error in deleteAccountWithPassword: $e');
+      return (success: false, error: e.toString());
+    }
+  }
+
+  /// Delete account without password (legacy method)
+  static Future<bool> deleteAccount() async {
+    final result = await deleteAccountWithPassword('');
+    return result.success;
+  }
+
   /// Reset password
   static Future<void> resetPassword(String email) async {
     await client.auth.resetPasswordForEmail(email);
@@ -313,6 +360,253 @@ class SupabaseService {
     await client.rpc('decrement_stars', params: {'project_id': projectId});
   }
 
+  /// Check if user has starred a project
+  static Future<bool> hasStarredProject(String projectId) async {
+    if (userId == null) return false;
+    
+    final response = await client
+        .from('project_stars')
+        .select('id')
+        .eq('user_id', userId!)
+        .eq('project_id', projectId)
+        .maybeSingle();
+    
+    return response != null;
+  }
+
+  /// Get IDs of all projects starred by current user
+  static Future<Set<String>> getStarredProjectIds() async {
+    if (userId == null) return {};
+    
+    final response = await client
+        .from('project_stars')
+        .select('project_id')
+        .eq('user_id', userId!);
+    
+    return (response as List)
+        .map((e) => e['project_id'] as String)
+        .toSet();
+  }
+
+  /// Get project by ID with owner details
+  static Future<Map<String, dynamic>?> getProjectById(String projectId) async {
+    final response = await client
+        .from('projects')
+        .select('''
+          *,
+          profiles!projects_user_id_fkey (
+            id,
+            full_name,
+            avatar_url,
+            course,
+            email
+          )
+        ''')
+        .eq('id', projectId)
+        .maybeSingle();
+    
+    return response;
+  }
+
+  /// Increment project view count
+  static Future<void> incrementProjectViews(String projectId) async {
+    await client.rpc('increment_project_views', params: {'project_id': projectId});
+  }
+
+  // ============ PROJECT COMMENTS ============
+
+  /// Get comments for a project
+  static Future<List<Map<String, dynamic>>> getProjectComments(String projectId) async {
+    final response = await client
+        .from('project_comments')
+        .select('''
+          *,
+          profiles!project_comments_user_id_fkey (
+            id,
+            full_name,
+            avatar_url
+          )
+        ''')
+        .eq('project_id', projectId)
+        .order('created_at', ascending: false);
+    
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Add comment to a project
+  static Future<Map<String, dynamic>> addProjectComment({
+    required String projectId,
+    required String content,
+  }) async {
+    final response = await client
+        .from('project_comments')
+        .insert({
+          'project_id': projectId,
+          'user_id': userId,
+          'content': content,
+          'created_at': DateTime.now().toIso8601String(),
+        })
+        .select('''
+          *,
+          profiles!project_comments_user_id_fkey (
+            id,
+            full_name,
+            avatar_url
+          )
+        ''')
+        .single();
+    
+    return response;
+  }
+
+  /// Delete a comment
+  static Future<void> deleteProjectComment(String commentId) async {
+    await client
+        .from('project_comments')
+        .delete()
+        .eq('id', commentId)
+        .eq('user_id', userId!);
+  }
+
+  // ============ COLLABORATION REQUESTS ============
+
+  /// Send a collaboration request
+  static Future<void> sendCollaborationRequest({
+    required String projectId,
+    required String ownerId,
+    required String message,
+  }) async {
+    await client.from('collaboration_requests').insert({
+      'project_id': projectId,
+      'requester_id': userId,
+      'owner_id': ownerId,
+      'message': message,
+      'status': 'pending',
+      'created_at': DateTime.now().toIso8601String(),
+    });
+
+    // Notify project owner
+    final profile = await getProfile();
+    await createNotification(
+      targetUserId: ownerId,
+      type: 'collaboration_request',
+      title: 'Collaboration Request',
+      message: '${profile?['full_name'] ?? 'Someone'} wants to collaborate on your project',
+      fromUserId: userId,
+    );
+  }
+
+  /// Get collaboration requests for my projects
+  static Future<List<Map<String, dynamic>>> getMyCollaborationRequests() async {
+    if (userId == null) return [];
+    
+    final response = await client
+        .from('collaboration_requests')
+        .select('''
+          *,
+          profiles!collaboration_requests_requester_id_fkey (
+            id,
+            full_name,
+            avatar_url,
+            course
+          ),
+          projects!collaboration_requests_project_id_fkey (
+            id,
+            name
+          )
+        ''')
+        .eq('owner_id', userId!)
+        .eq('status', 'pending')
+        .order('created_at', ascending: false);
+    
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Get my sent collaboration requests
+  static Future<List<Map<String, dynamic>>> getMySentCollaborationRequests() async {
+    if (userId == null) return [];
+    
+    final response = await client
+        .from('collaboration_requests')
+        .select('''
+          *,
+          projects!collaboration_requests_project_id_fkey (
+            id,
+            name,
+            profiles!projects_user_id_fkey (
+              id,
+              full_name,
+              avatar_url
+            )
+          )
+        ''')
+        .eq('requester_id', userId!)
+        .order('created_at', ascending: false);
+    
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Accept collaboration request
+  static Future<void> acceptCollaborationRequest(String requestId) async {
+    final request = await client
+        .from('collaboration_requests')
+        .select('requester_id, project_id, projects(name)')
+        .eq('id', requestId)
+        .single();
+    
+    await client
+        .from('collaboration_requests')
+        .update({'status': 'accepted', 'updated_at': DateTime.now().toIso8601String()})
+        .eq('id', requestId);
+    
+    // Notify the requester
+    final projectName = request['projects']?['name'] ?? 'a project';
+    await createNotification(
+      targetUserId: request['requester_id'],
+      type: 'collaboration_accepted',
+      title: 'Request Accepted!',
+      message: 'Your collaboration request for "$projectName" was accepted',
+    );
+  }
+
+  /// Reject collaboration request
+  static Future<void> rejectCollaborationRequest(String requestId) async {
+    final request = await client
+        .from('collaboration_requests')
+        .select('requester_id, project_id, projects(name)')
+        .eq('id', requestId)
+        .single();
+    
+    await client
+        .from('collaboration_requests')
+        .update({'status': 'rejected', 'updated_at': DateTime.now().toIso8601String()})
+        .eq('id', requestId);
+    
+    // Notify the requester
+    final projectName = request['projects']?['name'] ?? 'a project';
+    await createNotification(
+      targetUserId: request['requester_id'],
+      type: 'collaboration_rejected',
+      title: 'Request Declined',
+      message: 'Your collaboration request for "$projectName" was declined',
+    );
+  }
+
+  /// Check if user already requested collaboration
+  static Future<bool> hasRequestedCollaboration(String projectId) async {
+    if (userId == null) return false;
+    
+    final response = await client
+        .from('collaboration_requests')
+        .select('id')
+        .eq('project_id', projectId)
+        .eq('requester_id', userId!)
+        .inFilter('status', ['pending', 'accepted'])
+        .maybeSingle();
+    
+    return response != null;
+  }
+
   // NOTE: Connection methods (sendConnectionRequest, acceptConnectionRequest, 
   // rejectConnectionRequest, getPendingRequests, getConnections, etc.) 
   // are defined at the bottom of this file in the CONNECTIONS / FRIEND REQUESTS section.
@@ -325,15 +619,23 @@ class SupabaseService {
     required String type,
     required String title,
     required String message,
+    String? fromUserId,
   }) async {
-    await client.from('notifications').insert({
-      'user_id': targetUserId,
-      'type': type,
-      'title': title,
-      'message': message,
-      'is_read': false,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+    try {
+      await client.from('notifications').insert({
+        'user_id': targetUserId,
+        'type': type,
+        'title': title,
+        'message': message,
+        'is_read': false,
+        'created_at': DateTime.now().toIso8601String(),
+        if (fromUserId != null) 'from_user_id': fromUserId,
+      });
+      debugPrint('Notification created for user $targetUserId: $title');
+    } catch (e) {
+      debugPrint('Error creating notification: $e');
+      // Don't rethrow - notifications are non-critical
+    }
   }
 
   /// Get my notifications
@@ -478,87 +780,6 @@ class SupabaseService {
   /// Unsubscribe from channel
   static Future<void> unsubscribe(RealtimeChannel channel) async {
     await client.removeChannel(channel);
-  }
-
-  // ============================================================================
-  // PROJECT COMMENTS
-  // ============================================================================
-
-  /// Get comments for a project
-  static Future<List<Map<String, dynamic>>> getProjectComments(String projectId) async {
-    final response = await client
-        .from('project_comments')
-        .select('''
-          *,
-          user:profiles!project_comments_user_id_fkey(id, full_name, avatar_url)
-        ''')
-        .eq('project_id', projectId)
-        .isFilter('parent_comment_id', null) // Get top-level comments only
-        .order('created_at', ascending: true);
-    
-    return List<Map<String, dynamic>>.from(response);
-  }
-
-  /// Get replies to a comment
-  static Future<List<Map<String, dynamic>>> getCommentReplies(String commentId) async {
-    final response = await client
-        .from('project_comments')
-        .select('''
-          *,
-          user:profiles!project_comments_user_id_fkey(id, full_name, avatar_url)
-        ''')
-        .eq('parent_comment_id', commentId)
-        .order('created_at', ascending: true);
-    
-    return List<Map<String, dynamic>>.from(response);
-  }
-
-  /// Add a comment to a project
-  static Future<Map<String, dynamic>> addComment({
-    required String projectId,
-    required String content,
-    String? parentCommentId,
-  }) async {
-    final response = await client.from('project_comments').insert({
-      'project_id': projectId,
-      'user_id': userId,
-      'content': content,
-      'parent_comment_id': parentCommentId,
-      'created_at': DateTime.now().toIso8601String(),
-    }).select('''
-      *,
-      user:profiles!project_comments_user_id_fkey(id, full_name, avatar_url)
-    ''').single();
-    
-    // Create notification for project owner
-    final project = await client.from('projects').select('user_id, name').eq('id', projectId).single();
-    if (project['user_id'] != userId) {
-      await createNotification(
-        targetUserId: project['user_id'],
-        type: 'project_comment',
-        title: 'New Comment',
-        message: 'Someone commented on "${project['name']}"',
-      );
-    }
-    
-    return response;
-  }
-
-  /// Update a comment
-  static Future<void> updateComment(String commentId, String content) async {
-    await client
-        .from('project_comments')
-        .update({
-          'content': content,
-          'is_edited': true,
-          'updated_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', commentId);
-  }
-
-  /// Delete a comment
-  static Future<void> deleteComment(String commentId) async {
-    await client.from('project_comments').delete().eq('id', commentId);
   }
 
   // ============================================================================
@@ -991,19 +1212,6 @@ class SupabaseService {
       'p_project_id': projectId,
       'stat_name': 'views',
     });
-  }
-
-  /// Check if user starred a project
-  static Future<bool> hasStarredProject(String projectId) async {
-    if (userId == null) return false;
-    
-    final response = await client
-        .from('project_stars')
-        .select()
-        .eq('user_id', userId!)
-        .eq('project_id', projectId);
-    
-    return (response as List).isNotEmpty;
   }
 
   // ============================================================================
@@ -1565,12 +1773,27 @@ class SupabaseService {
     if (userId == null || userId == receiverId) return false;
 
     try {
+      // Check if request already exists
+      final existingRequest = await client
+          .from('connection_requests')
+          .select('id, status')
+          .eq('sender_id', userId!)
+          .eq('receiver_id', receiverId)
+          .maybeSingle();
+      
+      if (existingRequest != null) {
+        debugPrint('Connection request already exists with status: ${existingRequest['status']}');
+        return existingRequest['status'] == 'pending';
+      }
+      
       await client.from('connection_requests').insert({
         'sender_id': userId,
         'receiver_id': receiverId,
         'status': 'pending',
         if (message != null) 'message': message,
       });
+      
+      debugPrint('Connection request inserted successfully');
       
       // Get sender's name for notification
       final senderProfile = await getProfile();
@@ -1582,6 +1805,7 @@ class SupabaseService {
         type: 'connection_request',
         title: 'New Connection Request',
         message: '$senderName wants to connect with you',
+        fromUserId: userId,
       );
       
       return true;
@@ -1617,6 +1841,7 @@ class SupabaseService {
         type: 'connection_accepted',
         title: 'Connection Accepted',
         message: '$accepterName accepted your connection request',
+        fromUserId: userId,
       );
       
       return true;
@@ -1650,12 +1875,13 @@ class SupabaseService {
           .from('connection_requests')
           .select('''
             *,
-            sender_profile:sender_id (full_name, avatar_url, bio, course)
+            sender_profile:profiles!sender_id(full_name, avatar_url, bio, course)
           ''')
           .eq('receiver_id', userId!)
           .eq('status', 'pending')
           .order('created_at', ascending: false);
       
+      debugPrint('Pending requests response: $response');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       debugPrint('Error fetching pending requests: $e');
@@ -1672,7 +1898,7 @@ class SupabaseService {
           .from('connection_requests')
           .select('''
             *,
-            receiver_profile:receiver_id (full_name, avatar_url, bio)
+            receiver_profile:profiles!receiver_id(full_name, avatar_url, bio)
           ''')
           .eq('sender_id', userId!)
           .eq('status', 'pending')

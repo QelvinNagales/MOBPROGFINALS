@@ -804,20 +804,170 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Account deletion is not available in this version'),
-                  backgroundColor: AppColors.warning,
-                ),
-              );
+              _showPasswordConfirmationDialog();
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Delete Account'),
+            child: const Text('Continue'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showPasswordConfirmationDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final passwordController = TextEditingController();
+    bool isLoading = false;
+    bool obscurePassword = true;
+    String? errorMessage;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: isDark ? AppColors.darkCard : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.lock_rounded, color: AppColors.error),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Confirm Password',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : AppColors.darkText,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter your password to permanently delete your account.',
+                style: TextStyle(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                enabled: !isLoading,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  labelStyle: TextStyle(
+                    color: isDark ? Colors.white54 : AppColors.textSecondary,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.lock_outline,
+                    color: isDark ? Colors.white54 : AppColors.textSecondary,
+                  ),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: isDark ? Colors.white54 : AppColors.textSecondary,
+                    ),
+                    onPressed: () => setState(() => obscurePassword = !obscurePassword),
+                  ),
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.withOpacity(0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  errorText: errorMessage,
+                  errorStyle: const TextStyle(color: AppColors.error),
+                ),
+                style: TextStyle(
+                  color: isDark ? Colors.white : AppColors.darkText,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: isLoading ? null : () async {
+                if (passwordController.text.isEmpty) {
+                  setState(() => errorMessage = 'Please enter your password');
+                  return;
+                }
+                
+                setState(() {
+                  isLoading = true;
+                  errorMessage = null;
+                });
+                
+                final result = await SupabaseService.deleteAccountWithPassword(
+                  passwordController.text,
+                );
+                
+                if (!mounted) return;
+                
+                if (result.success) {
+                  Navigator.pop(context); // Close password dialog
+                  
+                  // Navigate to splash screen
+                  Navigator.of(context).pushNamedAndRemoveUntil(
+                    '/',
+                    (route) => false,
+                  );
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Your account has been permanently deleted'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+                } else {
+                  setState(() {
+                    isLoading = false;
+                    errorMessage = result.error ?? 'Failed to delete account';
+                  });
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Delete Permanently'),
+            ),
+          ],
+        ),
       ),
     );
   }

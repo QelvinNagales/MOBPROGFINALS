@@ -83,6 +83,10 @@ class _MyAppState extends State<MyApp> {
         // Theme mode from service
         themeMode: themeService.themeMode,
 
+        // Smooth theme transition animation
+        themeAnimationDuration: const Duration(milliseconds: 300),
+        themeAnimationCurve: Curves.easeInOut,
+
         // Start with splash screen
         home: const SplashScreen(),
       ),

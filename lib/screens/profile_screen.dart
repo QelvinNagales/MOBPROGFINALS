@@ -570,17 +570,7 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
                       _buildQuickAction(
                         icon: Icons.qr_code_rounded,
                         label: 'QR Code',
-                        onTap: () => QrCodeModal.show(context, _profile!),
-                        isDark: isDark,
-                      ),
-                      const SizedBox(width: 12),
-                      _buildQuickAction(
-                        icon: Icons.qr_code_scanner_rounded,
-                        label: 'Scan',
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const QrScannerScreen()),
-                        ),
+                        onTap: () => _showQrOptions(isDark),
                         isDark: isDark,
                       ),
                       const SizedBox(width: 12),
@@ -598,6 +588,145 @@ class _ProfileScreenState extends State<ProfileScreen> with SingleTickerProvider
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showQrOptions(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkCard : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'QR Code',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppColors.darkText,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Connect with others using QR codes',
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.white60 : AppColors.darkText.withOpacity(0.6),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                children: [
+                  _buildQrOption(
+                    icon: Icons.qr_code_rounded,
+                    label: 'Show My QR Code',
+                    subtitle: 'Let others scan to connect with you',
+                    onTap: () {
+                      Navigator.pop(context);
+                      QrCodeModal.show(context, _profile!);
+                    },
+                    isDark: isDark,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildQrOption(
+                    icon: Icons.qr_code_scanner_rounded,
+                    label: 'Scan QR Code',
+                    subtitle: 'Scan someone else\'s QR to connect',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const QrScannerScreen()),
+                      );
+                    },
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQrOption({
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Material(
+      color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade50,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGold.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: AppColors.primaryGold, size: 26),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : AppColors.darkText,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white54 : AppColors.darkText.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isDark ? Colors.white30 : Colors.grey.shade400,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

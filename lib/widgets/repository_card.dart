@@ -20,12 +20,14 @@ class RepositoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? AppColors.darkCard : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
+        border: Border.all(color: isDark ? AppColors.darkCardBorder : AppColors.cardBorder),
       ),
       child: InkWell(
         onTap: onTap,
@@ -41,7 +43,7 @@ class RepositoryCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.lightBlue,
+                      color: isDark ? AppColors.primaryBlue.withOpacity(0.2) : AppColors.lightBlue,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -54,10 +56,10 @@ class RepositoryCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       repository.name,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                         letterSpacing: -0.3,
                       ),
                     ),
@@ -93,7 +95,7 @@ class RepositoryCard extends StatelessWidget {
                 repository.description,
                 style: TextStyle(
                   fontSize: 14,
-                  color: AppColors.textSecondary,
+                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                   height: 1.5,
                 ),
                 maxLines: 2,
@@ -115,7 +117,7 @@ class RepositoryCard extends StatelessWidget {
                             vertical: 5,
                           ),
                           decoration: BoxDecoration(
-                            color: AppColors.lightBlue,
+                            color: isDark ? AppColors.primaryBlue.withOpacity(0.2) : AppColors.lightBlue,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -136,7 +138,7 @@ class RepositoryCard extends StatelessWidget {
               // Divider
               Container(
                 height: 1,
-                color: AppColors.cardBorder,
+                color: isDark ? AppColors.darkCardBorder : AppColors.cardBorder,
               ),
               const SizedBox(height: 14),
 
@@ -157,7 +159,7 @@ class RepositoryCard extends StatelessWidget {
                     repository.language,
                     style: TextStyle(
                       fontSize: 13,
-                      color: AppColors.textSecondary,
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -167,6 +169,7 @@ class RepositoryCard extends StatelessWidget {
                     icon: Icons.star_rounded,
                     value: repository.stars,
                     onTap: onStar,
+                    isDark: isDark,
                   ),
                   const SizedBox(width: 16),
                   // Forks
@@ -174,6 +177,7 @@ class RepositoryCard extends StatelessWidget {
                     icon: Icons.call_split_rounded,
                     value: repository.forks,
                     onTap: onFork,
+                    isDark: isDark,
                   ),
                 ],
               ),
@@ -187,6 +191,7 @@ class RepositoryCard extends StatelessWidget {
   Widget _buildStatButton({
     required IconData icon,
     required int value,
+    required bool isDark,
     VoidCallback? onTap,
   }) {
     return InkWell(
@@ -197,7 +202,7 @@ class RepositoryCard extends StatelessWidget {
           Icon(
             icon,
             size: 18,
-            color: AppColors.textSecondary,
+            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
           ),
           const SizedBox(width: 4),
           Text(
@@ -205,7 +210,7 @@ class RepositoryCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
+              color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
             ),
           ),
         ],

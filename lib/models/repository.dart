@@ -14,10 +14,14 @@ class Repository {
   int commentsCount;
   bool isPublic;
   String status; // 'idea', 'in_progress', 'completed', 'archived'
+  bool lookingForTeam; // Whether project is seeking collaborators
   List<String> topics;
   List<String> technologies;
+  List<String> screenshots; // Multiple project screenshots
   String? githubUrl;
   String? demoUrl;
+  String? videoUrl; // Demo video URL
+  String? docsUrl; // Documentation URL
   String? thumbnailUrl;
   DateTime? startDate;
   DateTime? endDate;
@@ -46,10 +50,14 @@ class Repository {
     this.commentsCount = 0,
     this.isPublic = true,
     this.status = 'in_progress',
+    this.lookingForTeam = false,
     List<String>? topics,
     List<String>? technologies,
+    List<String>? screenshots,
     this.githubUrl,
     this.demoUrl,
+    this.videoUrl,
+    this.docsUrl,
     this.thumbnailUrl,
     this.startDate,
     this.endDate,
@@ -58,7 +66,8 @@ class Repository {
     this.ownerName,
     this.ownerAvatar,
   })  : topics = topics ?? [],
-        technologies = technologies ?? [];
+        technologies = technologies ?? [],
+        screenshots = screenshots ?? [];
 
   /// Create Repository from Supabase JSON response
   factory Repository.fromJson(Map<String, dynamic> json) {
@@ -77,10 +86,14 @@ class Repository {
       commentsCount: json['comments_count'] as int? ?? 0,
       isPublic: json['is_public'] as bool? ?? true,
       status: json['status'] as String? ?? 'in_progress',
+      lookingForTeam: json['looking_for_team'] as bool? ?? false,
       topics: (json['topics'] as List<dynamic>?)?.cast<String>() ?? [],
       technologies: (json['technologies'] as List<dynamic>?)?.cast<String>() ?? [],
+      screenshots: (json['screenshots'] as List<dynamic>?)?.cast<String>() ?? [],
       githubUrl: json['github_url'] as String?,
       demoUrl: json['demo_url'] as String?,
+      videoUrl: json['video_url'] as String?,
+      docsUrl: json['docs_url'] as String?,
       thumbnailUrl: json['thumbnail_url'] as String?,
       startDate: json['start_date'] != null 
           ? DateTime.parse(json['start_date'] as String)
@@ -114,10 +127,14 @@ class Repository {
       'comments_count': commentsCount,
       'is_public': isPublic,
       'status': status,
+      'looking_for_team': lookingForTeam,
       'topics': topics,
       'technologies': technologies,
+      'screenshots': screenshots,
       'github_url': githubUrl,
       'demo_url': demoUrl,
+      'video_url': videoUrl,
+      'docs_url': docsUrl,
       'thumbnail_url': thumbnailUrl,
       'start_date': startDate?.toIso8601String(),
       'end_date': endDate?.toIso8601String(),
@@ -140,10 +157,14 @@ class Repository {
     int? commentsCount,
     bool? isPublic,
     String? status,
+    bool? lookingForTeam,
     List<String>? topics,
     List<String>? technologies,
+    List<String>? screenshots,
     String? githubUrl,
     String? demoUrl,
+    String? videoUrl,
+    String? docsUrl,
     String? thumbnailUrl,
     DateTime? startDate,
     DateTime? endDate,
@@ -165,10 +186,14 @@ class Repository {
       commentsCount: commentsCount ?? this.commentsCount,
       isPublic: isPublic ?? this.isPublic,
       status: status ?? this.status,
+      lookingForTeam: lookingForTeam ?? this.lookingForTeam,
       topics: topics ?? List.from(this.topics),
       technologies: technologies ?? List.from(this.technologies),
+      screenshots: screenshots ?? List.from(this.screenshots),
       githubUrl: githubUrl ?? this.githubUrl,
       demoUrl: demoUrl ?? this.demoUrl,
+      videoUrl: videoUrl ?? this.videoUrl,
+      docsUrl: docsUrl ?? this.docsUrl,
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
